@@ -66,7 +66,6 @@ class Index:
 
     def __repr__(self):
         return str(self)
-
 @total_ordering
 class TermOccurrence:
     def __init__(self,doc_id:int,term_id:int, term_freq:int):
@@ -75,7 +74,9 @@ class TermOccurrence:
         self.term_freq = term_freq
 
     def write(self, idx_file):
-        pass
+        idx_file.write(self.doc_id.to_bytes(4,byteorder="big"))
+        idx_file.write(self.term_id.to_bytes(4,byteorder="big"))
+        idx_file.write(self.term_freq.to_bytes(4,byteorder="big"))
 
     def __hash__(self):
     	return hash((self.doc_id,self.term_id))
@@ -141,13 +142,13 @@ class FileIndex(Index):
 
         self.lst_occurrences_tmp = []
         self.idx_file_counter = 0
-        self.str_idx_file_name = "occur_idx_file"
+        self.str_idx_file_name = None
 
     def get_term_id(self, term:str):
         return self.dic_index[term].term_id
 
     def create_index_entry(self, term_id:int) -> TermFilePosition:
-        return  TermFilePosition(term_id)
+        return TermFilePosition(term_id)
 
     def add_index_occur(self, entry_dic_index:TermFilePosition,  doc_id:int, term_id:int, term_freq:int):
         self.lst_occurrences_tmp.append(TermOccurrence(doc_id,term_id,term_freq))
@@ -156,15 +157,22 @@ class FileIndex(Index):
             self.save_tmp_occurrences()
 
     def next_from_list(self) -> TermOccurrence:
-        return None
+        if len(self.lst_occurrences_tmp) == 0:
+            return None
+        return self.lst_occurrences_tmp.pop(0)
 
     def next_from_file(self,file_idx) -> TermOccurrence:
-            #next_from_file = pickle.load(file_idx)
         bytes_doc_id = file_idx.read(4)
         if not bytes_doc_id:
             return None
-        #seu código aqui :)
+        bytes_term_id = file_idx.read(4)
+        bytes_term_freq = file_idx.read(4)
 
+        #next_from_file = pickle.load(file_idx) # Não conseguimos usar, deu erro: UnpicklingError: invalid load key, '\x00'.
+        
+        doc_id = int.from_bytes(bytes_doc_id, "big")
+        term_id = int.from_bytes(bytes_term_id, "big")
+        term_freq = int.from_bytes(bytes_term_freq, "big")
         return TermOccurrence(doc_id, term_id, term_freq)
 
 
@@ -176,13 +184,45 @@ class FileIndex(Index):
         gc.disable()
         
         #ordena pelo term_id, doc_id
-        
-        
-        ### Abra um arquivo novo faça a ordenação externa: compar sempre a primeira posição
+        self.lst_occurrences_tmp.sort()
+
+        ### Abra um arquivo novo faça a ordenação externa: comparar sempre a primeira posição
         ### da lista com a primeira possição do arquivo usando os métodos next_from_list e next_from_file
         ### para armazenar no novo indice ordenado
 
+        if self.str_idx_file_name == None:
+            self.write_file_occurences(self.lst_occurrences_tmp)
+            self.lst_occurrences_tmp = []
+            
+        else:
+            with open(self.str_idx_file_name,"rb") as file:
+                new_ordered_list = []
+
+                next_from_list = self.next_from_list()
+                next_from_file = self.next_from_file(file)
+                
+                while next_from_list != None or next_from_file != None:
+                    if next_from_list < next_from_file:
+                        new_ordered_list.append(next_from_list)
+                        next_from_list = self.next_from_list()
+                    else:
+                        new_ordered_list.append(next_from_file)
+                        next_from_file = self.next_from_file(file)
+
+                self.write_file_occurences(new_ordered_list)
+
         gc.enable()
+
+    def write_file_occurences(self, lst_occurrences):
+        self.idx_file_counter = self.idx_file_counter + 1
+        self.str_idx_file_name = f"occur_index_{self.idx_file_counter}"
+
+        #pickle.dump(self.lst_occurrences_tmp, open(self.str_idx_file_name,"wb") )
+
+        with open(self.str_idx_file_name,"wb") as file:
+            for term_occurence in lst_occurrences:
+                term_occurence.write(file)
+            file.close()
 
     def finish_indexing(self):
         if len(self.lst_occurrences_tmp) > 0:
