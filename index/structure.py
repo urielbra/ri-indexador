@@ -7,6 +7,8 @@ import os
 import pickle
 import gc
 
+BYTE_SIZE = 4
+
 class Index:
     def __init__(self):
         self.dic_index = {}
@@ -74,9 +76,9 @@ class TermOccurrence:
         self.term_freq = term_freq
 
     def write(self, idx_file):
-        idx_file.write(self.doc_id.to_bytes(4,byteorder="big"))
-        idx_file.write(self.term_id.to_bytes(4,byteorder="big"))
-        idx_file.write(self.term_freq.to_bytes(4,byteorder="big"))
+        idx_file.write(self.doc_id.to_bytes(BYTE_SIZE,byteorder="big"))
+        idx_file.write(self.term_id.to_bytes(BYTE_SIZE,byteorder="big"))
+        idx_file.write(self.term_freq.to_bytes(BYTE_SIZE,byteorder="big"))
 
     def __hash__(self):
     	return hash((self.doc_id,self.term_id))
@@ -162,11 +164,11 @@ class FileIndex(Index):
         return self.lst_occurrences_tmp.pop(0)
 
     def next_from_file(self,file_idx) -> TermOccurrence:
-        bytes_doc_id = file_idx.read(4)
+        bytes_doc_id = file_idx.read(BYTE_SIZE)
         if not bytes_doc_id:
             return None
-        bytes_term_id = file_idx.read(4)
-        bytes_term_freq = file_idx.read(4)
+        bytes_term_id = file_idx.read(BYTE_SIZE)
+        bytes_term_freq = file_idx.read(BYTE_SIZE)
 
         #next_from_file = pickle.load(file_idx) # Não conseguimos usar, deu erro: UnpicklingError: invalid load key, '\x00'.
         
@@ -232,14 +234,43 @@ class FileIndex(Index):
         # id_termo -> obj_termo armazene-o em dic_ids_por_termo
         dic_ids_por_termo = {}
         for str_term,obj_term in self.dic_index.items():
-            pass
+            dic_ids_por_termo[obj_term.term_id] = (0, 0, str_term)
+
+        print(dic_ids_por_termo)
         
         with open(self.str_idx_file_name,'rb') as idx_file:
+            file_trio = self.next_from_file(idx_file)
+            while(file_trio != None) :
+                pointer_value = dic_ids_por_termo[file_trio.term_id][0]
+                dic_count = dic_ids_por_termo[file_trio.term_id][1]
+                key = dic_ids_por_termo[file_trio.term_id][2]
+                if(dic_count == 0):
+                    pointer_value = idx_file.tell() - (BYTE_SIZE * 3) # 3 pois são salvos 3 interios por TermOccurrence
+                dic_count += 1
+                dic_ids_por_termo[file_trio.term_id] = (pointer_value, dic_count, key)
+                file_trio = self.next_from_file(idx_file)
+
+            print(dic_ids_por_termo)
+        for key,value in dic_ids_por_termo.items():
+            self.dic_index[value[2]] = TermFilePosition(key, value[0], value[1])
+        print(self.dic_index)
+           
             #navega nas ocorrencias para atualizar cada termo em dic_ids_por_termo 
             #apropriadamente
-            pass
+
 
     def get_occurrence_list(self,term: str)->List:
-        return []
+        if term not in self.dic_index:
+            return []
+        termFilePosition : TermFilePosition = self.dic_index[term]
+        occurrences = 0
+        response = []
+        with open(self.str_idx_file_name,'rb') as idx_file:
+            idx_file.read(termFilePosition.term_file_start_pos) # skip pointer
+            while(occurrences < termFilePosition.doc_count_with_term) :
+                file_trio: TermOccurrence = self.next_from_file(idx_file)
+                occurrences+=1
+                response.append(file_trio)
+        return response
     def document_count_with_term(self,term:str) -> int:
-        return 0
+        return len(self.get_occurrence_list(term))

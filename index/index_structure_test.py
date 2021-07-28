@@ -61,7 +61,8 @@ class StructureTest(unittest.TestCase):
 
 class FileStructureTest(StructureTest):
     def setUp(self):
-        None
+        self.index = FileIndex()
+        self.create_terms()
 
 if __name__ == "__main__":
     unittest.main()
