@@ -145,6 +145,7 @@ class FileIndex(Index):
         self.lst_occurrences_tmp = []
         self.idx_file_counter = 0
         self.str_idx_file_name = None
+        self.next_from_list_idx = 0
 
     def get_term_id(self, term:str):
         return self.dic_index[term].term_id
@@ -159,9 +160,11 @@ class FileIndex(Index):
             self.save_tmp_occurrences()
 
     def next_from_list(self) -> TermOccurrence:
-        if len(self.lst_occurrences_tmp) == 0:
+        if len(self.lst_occurrences_tmp) <= self.next_from_list_idx:
             return None
-        return self.lst_occurrences_tmp.pop(0)
+        next_from_list = self.lst_occurrences_tmp[self.next_from_list_idx]
+        self.next_from_list_idx += 1
+        return next_from_list
 
     def next_from_file(self,file_idx) -> TermOccurrence:
         bytes_doc_id = file_idx.read(BYTE_SIZE)
@@ -194,7 +197,6 @@ class FileIndex(Index):
 
         if self.str_idx_file_name == None:
             self.write_file_occurences(self.lst_occurrences_tmp)
-            self.lst_occurrences_tmp = []
             
         else:
             with open(self.str_idx_file_name,"rb") as file:
@@ -210,12 +212,13 @@ class FileIndex(Index):
                     else:
                         new_ordered_list.append(next_from_file)
                         next_from_file = self.next_from_file(file)
-
                 self.write_file_occurences(new_ordered_list)
 
         gc.enable()
 
     def write_file_occurences(self, lst_occurrences):
+        self.lst_occurrences_tmp = []
+        self.next_from_list_idx = 0
         self.idx_file_counter = self.idx_file_counter + 1
         self.str_idx_file_name = f"occur_index_{self.idx_file_counter}"
 
