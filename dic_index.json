@@ -1,0 +1,51 @@
+{
+    "ola": [
+        {
+            "doc_id": 10,
+            "term_id": 1,
+            "term_freq": 1
+        }
+    ],
+    "qua": [
+        {
+            "doc_id": 10,
+            "term_id": 2,
+            "term_freq": 1
+        }
+    ],
+    "sao": [
+        {
+            "doc_id": 10,
+            "term_id": 3,
+            "term_freq": 1
+        }
+    ],
+    "os": [
+        {
+            "doc_id": 10,
+            "term_id": 4,
+            "term_freq": 1
+        }
+    ],
+    "dad": [
+        {
+            "doc_id": 10,
+            "term_id": 5,
+            "term_freq": 1
+        }
+    ],
+    "que": [
+        {
+            "doc_id": 10,
+            "term_id": 6,
+            "term_freq": 1
+        }
+    ],
+    "precis": [
+        {
+            "doc_id": 10,
+            "term_id": 7,
+            "term_freq": 1
+        }
+    ]
+}

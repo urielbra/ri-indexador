@@ -4,6 +4,7 @@ from abc import abstractmethod
 from functools import total_ordering
 from os import path
 import os
+import json
 import pickle
 import gc
 
@@ -25,6 +26,16 @@ class Index:
 
         self.add_index_occur(self.dic_index[term], doc_id, int_term_id, term_freq)
         self.set_documents.add(doc_id)
+    
+    def writeOnFile(self):
+        dic_index_serializable = {}
+        for key, value in self.dic_index.items():
+            dic_index_serializable[key] = list(map(lambda o: o.__dict__, value ))
+        with open('dic_index.json', 'w') as outfile:
+            json.dump(dic_index_serializable, outfile, indent=4)
+    def readFromFile(self): 
+        with open('dic_index.json') as json_file:
+            return json.load(json_file)
 
 
     @property
@@ -97,6 +108,7 @@ class TermOccurrence:
 
     def __repr__(self):
         return str(self)
+
 
 
 #HashIndex é subclasse de Index
